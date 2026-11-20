@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Laiks">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2a78d6">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>Laikapstākļi – precīzā prognoze</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f3f3f1; --surface:#fcfcfb; --line:#e4e3df; --grid:#ecebe7;
+  --text:#0b0b0b; --text2:#52514e; --muted:#8a8984;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300;
+  --warn:#b45309; --warnbg:#fff4e0; --crit:#b91c1c; --critbg:#fde8e8;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    color-scheme:dark;
+    --bg:#111110; --surface:#1a1a19; --line:#2c2c2a; --grid:#262624;
+    --text:#f0efec; --text2:#c3c2b7; --muted:#8f8e86;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#0ca30c;
+    --warn:#f5b04a; --warnbg:#3a2a10; --crit:#f87171; --critbg:#3a1616;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:14px 12px 40px}
+header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+header h1{font-size:15px;margin:0;flex:1;min-width:160px;color:var(--text2);font-weight:600}
+button,input{font:inherit;color:inherit}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 11px;cursor:pointer}
+.btn:active{transform:scale(.97)}
+.search{position:relative;flex:1 1 100%}
+.search input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+.results{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;z-index:20;overflow:hidden;display:none;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.results div{padding:10px 12px;cursor:pointer;border-top:1px solid var(--line)}
+.results div:first-child{border-top:0}
+.results div:hover{background:var(--grid)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin:0 0 10px;font-weight:600}
+.now{display:flex;gap:14px;align-items:center}
+.now .icon{font-size:56px;line-height:1}
+.now .temp{font-size:52px;font-weight:300;line-height:1;letter-spacing:-.02em}
+.now .desc{font-size:16px;font-weight:500}
+.now .place{color:var(--text2);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:8px;margin-top:14px}
+.tile{background:var(--bg);border-radius:12px;padding:8px 10px}
+.tile .k{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
+.tile .v{font-size:17px;font-weight:600}
+.tile .s{font-size:12px;color:var(--muted)}
+.alert{border-radius:12px;padding:10px 12px;margin-top:10px;font-size:14px;display:flex;gap:8px}
+.alert.warn{background:var(--warnbg);color:var(--warn)}
+.alert.crit{background:var(--critbg);color:var(--crit)}
+.seg{display:inline-flex;background:var(--bg);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:5px 10px;border-radius:8px;cursor:pointer;color:var(--text2);font-size:13px}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.chart{position:relative;margin-top:4px;touch-action:pan-y}
+.chart svg{display:block;width:100%;overflow:visible}
+.chart .lbl{font-size:12px;color:var(--text2);margin:10px 0 2px}
+.tip{position:absolute;top:0;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 9px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.18);display:none;z-index:5;white-space:nowrap}
+.tip b{display:block;margin-bottom:3px;font-size:12px}
+.tip .r{display:flex;align-items:center;gap:6px}
+.tip .sw{width:10px;height:3px;border-radius:2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.legend button{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--text)}
+.legend button.off{opacity:.4}
+.legend .sw{width:12px;height:3px;border-radius:2px}
+.days .d{display:grid;grid-template-columns:62px 30px 34px 1fr 34px 58px;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.days .d:first-child{border-top:0}
+.days .dn{font-weight:600}
+.days .dn small{display:block;font-weight:400;color:var(--muted);font-size:11px}
+.days .ic{font-size:22px;text-align:center}
+.days .mn{color:var(--text2);text-align:right}
+.days .bar{height:6px;background:var(--grid);border-radius:3px;position:relative}
+.days .bar i{position:absolute;top:0;bottom:0;border-radius:3px;background:linear-gradient(90deg,var(--s1),var(--s2))}
+.days .pr{font-size:12px;color:var(--text2);text-align:right;line-height:1.25}
+.conf{display:flex;gap:10px;align-items:center;font-size:14px}
+.pill{border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;background:var(--bg)}
+.note{font-size:12px;color:var(--muted)}
+.note a,.links a{color:var(--s1)}
+.links{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.err{color:var(--crit);font-size:14px}
+.sun{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--text2)}
+table.tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+table.tbl td,table.tbl th{padding:4px 6px;border-top:1px solid var(--line);text-align:right}
+table.tbl th:first-child,table.tbl td:first-child{text-align:left}
+details summary{cursor:pointer;font-size:12px;color:var(--text2);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>☁︎ Laikapstākļi</h1>
+    <button class="btn" id="locBtn" title="Noteikt manu atrašanās vietu">📍 Mana vieta</button>
+    <button class="btn" id="refBtn" title="Atjaunot">↻</button>
+    <div class="search">
+      <input id="q" placeholder="Meklēt vietu (piem. Reykjavík, Selfoss, Akureyri)…" autocomplete="off">
+      <div class="results" id="res"></div>
+    </div>
+  </header>
+
+  <div id="status" class="note" style="margin:-4px 0 10px"></div>
+
+  <section class="card" id="nowCard"><div class="note">Ielādē…</div></section>
+
+  <section class="card">
+    <div class="row">
+      <h2 style="margin:0">Stundu prognoze</h2>
+      <div class="seg" id="rangeSeg">
+        <button data-r="24">24 h</button><button data-r="48" class="on">48 h</button><button data-r="168">7 d</button>
+      </div>
+    </div>
+    <div class="chart" id="cTemp"></div>
+    <div class="chart" id="cPrec"></div>
+    <div class="chart" id="cWind"></div>
+  </section>
+
+  <section class="card">
+    <h2>Modeļu salīdzinājums</h2>
+    <div id="confBox" class="conf" style="margin-bottom:10px"></div>
+    <div class="seg" id="metricSeg">
+      <button data-m="t" class="on">Temperatūra</button><button data-m="p">Nokrišņi</button><button data-m="w">Vējš</button><button data-m="g">Brāzmas</button>
+    </div>
+    <div class="chart" id="cModels"></div>
+    <div class="legend" id="modelLegend"></div>
+    <p class="note" id="modelNote"></p>
+  </section>
+
+  <section class="card">
+    <h2>14 dienu prognoze</h2>
+    <div class="days" id="days"></div>
+  </section>
+
+  <section class="card">
+    <h2>Oficiālie avoti Islandē</h2>
+    <div class="links">
+      <a href="https://en.vedur.is/weather/warnings/" target="_blank" rel="noopener">⚠️ Veðurstofa Íslands – brīdinājumi (vedur.is)</a>
+      <a href="https://umferdin.is/en" target="_blank" rel="noopener">🚗 Ceļu stāvoklis (umferdin.is)</a>
+      <a href="https://safetravel.is/" target="_blank" rel="noopener">🧭 SafeTravel.is</a>
+    </div>
+    <p class="note">Dati: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) — DMI HARMONIE, ECMWF IFS, DWD ICON, NOAA GFS, UK Met Office, MET Norway. Temperatūra pielāgota vietas augstumam (90 m reljefa modelis).</p>
+  </section>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const API = "https://api.open-meteo.com/v1/forecast";
+const GEO = "https://geocoding-api.open-meteo.com/v1/search";
+const MODELS = [
+  {id:"dmi_seamless",    name:"DMI HARMONIE 2 km", c:"--s1"},
+  {id:"ecmwf_ifs025",    name:"ECMWF IFS",          c:"--s2"},
+  {id:"icon_seamless",   name:"DWD ICON",           c:"--s3"},
+  {id:"gfs_seamless",    name:"NOAA GFS",           c:"--s4"},
+  {id:"ukmo_seamless",   name:"UK Met Office",      c:"--s5"},
+  {id:"metno_seamless",  name:"MET Norway",         c:"--s6"},
+];
+const WD = ["Sv","P","O","T","C","Pk","S"];
+const WDL = ["Svētdiena","Pirmdiena","Otrdiena","Trešdiena","Ceturtdiena","Piektdiena","Sestdiena"];
+const MON = ["jan","feb","mar","apr","mai","jūn","jūl","aug","sep","okt","nov","dec"];
+const WC = {
+  0:["Skaidrs","☀️","🌙"],1:["Pārsvarā skaidrs","🌤️","🌙"],2:["Daļēji mākoņains","⛅","☁️"],3:["Apmācies","☁️"],
+  45:["Migla","🌫️"],48:["Sarmas migla","🌫️"],51:["Viegla smidzināšana","🌦️"],53:["Smidzināšana","🌦️"],55:["Stipra smidzināšana","🌧️"],
+  56:["Salstoša smidzināšana","🌧️"],57:["Stipra salstoša smidzināšana","🌧️"],61:["Neliels lietus","🌦️"],63:["Lietus","🌧️"],65:["Stiprs lietus","🌧️"],
+  66:["Salstošs lietus","🧊"],67:["Stiprs salstošs lietus","🧊"],71:["Neliels sniegs","🌨️"],73:["Sniegs","🌨️"],75:["Stiprs sniegs","❄️"],
+  77:["Sniega graudi","🌨️"],80:["Lietusgāzes","🌦️"],81:["Stipras lietusgāzes","🌧️"],82:["Ļoti stipras lietusgāzes","⛈️"],
+  85:["Sniega gāzes","🌨️"],86:["Stipras sniega gāzes","❄️"],95:["Pērkona negaiss","⛈️"],96:["Negaiss ar krusu","⛈️"],99:["Stiprs negaiss ar krusu","⛈️"]
+};
+const wcText = c => (WC[c]||["—"])[0];
+const wcIcon = (c,day=1) => { const w = WC[c]; if(!w) return "❔"; return (!day && w[2]) ? w[2] : w[1]; };
+const DIRS = ["Z","ZZA","ZA","AZA","A","ADA","DA","DDA","D","DDR","DR","RDR","R","RZR","ZR","ZZR"];
+const dirTxt = d => d==null ? "—" : DIRS[Math.round(d/22.5)%16];
+const arrow = d => d==null ? "" : `<span style="display:inline-block;transform:rotate(${d+180}deg)">↑</span>`;
+function windWord(v){ if(v==null) return ""; if(v<1)return"bezvējš"; if(v<4)return"vājš"; if(v<8)return"mērens"; if(v<14)return"stiprs"; if(v<20)return"ļoti stiprs"; if(v<25)return"vētra"; if(v<33)return"stipra vētra"; return"orkāns"; }
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const f1 = v => v==null||isNaN(v) ? "—" : (Math.round(v*10)/10).toString().replace(".",",");
+const f0 = v => v==null||isNaN(v) ? "—" : Math.round(v).toString();
+const dayOf = t => new Date(t.slice(0,10)+"T12:00:00Z").getUTCDay();
+const hh = t => t.slice(11,13);
+const fmtTime = t => `${WD[dayOf(t)]} ${+t.slice(8,10)}. ${MON[+t.slice(5,7)-1]} ${t.slice(11,16)}`;
+const store = { get(k){ try{return JSON.parse(localStorage.getItem(k))}catch(e){return null} }, set(k,v){ try{localStorage.setItem(k,JSON.stringify(v))}catch(e){} } };
+
+const S = { loc:null, main:null, models:{}, range:48, metric:"t", hidden:new Set(store.get("hiddenModels")||[]), nowIdx:0 };
+
+/* ---------- location ---------- */
+function setLoc(loc){ S.loc = loc; store.set("loc", loc); load(); }
+function geolocate(){
+  if(!navigator.geolocation){ status("Pārlūks neatbalsta atrašanās vietas noteikšanu — izmanto meklēšanu."); return; }
+  status("Nosaka atrašanās vietu…");
+  navigator.geolocation.getCurrentPosition(async p=>{
+    const lat=+p.coords.latitude.toFixed(4), lon=+p.coords.longitude.toFixed(4);
+    setLoc({lat,lon,name:"Mana atrašanās vieta",acc:Math.round(p.coords.accuracy)});
+  }, e=>{
+    status("Neizdevās noteikt vietu ("+e.message+"). Ieraksti vietu meklēšanā.");
+    if(!S.loc) setLoc({lat:64.1355,lon:-21.8954,name:"Reykjavík"});
+  }, {enableHighAccuracy:true,timeout:12000,maximumAge:300000});
+}
+let qTimer;
+$("#q").addEventListener("input", e=>{
+  clearTimeout(qTimer); const q=e.target.value.trim(); const box=$("#res");
+  if(q.length<2){ box.style.display="none"; return; }
+  qTimer=setTimeout(async()=>{
+    try{
+      const r = await fetch(`${GEO}?name=${encodeURIComponent(q)}&count=7&language=en&format=json`).then(r=>r.json());
+      const list = r.results||[];
+      box.innerHTML = list.length ? list.map((x,i)=>`<div data-i="${i}">${x.name}<span class="note"> · ${[x.admin1,x.country].filter(Boolean).join(", ")}${x.elevation!=null?` · ${Math.round(x.elevation)} m`:""}</span></div>`).join("") : `<div class="note">Nekas netika atrasts</div>`;
+      box.style.display="block";
+      box.querySelectorAll("[data-i]").forEach(el=>el.onclick=()=>{ const x=list[+el.dataset.i]; box.style.display="none"; $("#q").value=""; setLoc({lat:x.latitude,lon:x.longitude,name:x.name+(x.country?", "+x.country:"")}); });
+    }catch(err){ box.innerHTML=`<div class="err">Meklēšana neizdevās</div>`; box.style.display="block"; }
+  },300);
+});
+document.addEventListener("click", e=>{ if(!e.target.closest(".search")) $("#res").style.display="none"; });
+$("#locBtn").onclick = geolocate;
+$("#refBtn").onclick = ()=>load();
+function status(t){ $("#status").textContent=t; }
+
+/* ---------- data ---------- */
+const HOURLY = "temperature_2m,apparent_temperature,precipitation_probability,precipitation,snowfall,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cloud_cover,visibility,is_day";
+async function load(){
+  if(!S.loc) return;
+  const {lat,lon} = S.loc;
+  status("Ielādē prognozi…");
+  const base = `latitude=${lat}&longitude=${lon}&timezone=auto&wind_speed_unit=ms`;
+  try{
+    const main = await fetch(`${API}?${base}&forecast_days=14&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,visibility&hourly=${HOURLY}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,sunrise,sunset,daylight_duration`).then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
+    S.main = main;
+    const ct = main.current.time.slice(0,13);
+    S.nowIdx = Math.max(0, main.hourly.time.findIndex(t=>t.slice(0,13)===ct));
+    renderNow(); renderHourly(); renderDays();
+    const d = new Date(); status(`Atjaunots ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")} · ${f1(main.latitude)}°, ${f1(main.longitude)}° · ${Math.round(main.elevation)} m v.j.l.${S.loc.acc?` · precizitāte ±${S.loc.acc} m`:""}`);
+  }catch(err){
+    $("#nowCard").innerHTML = `<div class="err">Neizdevās ielādēt prognozi (${err.message}). Pārbaudi interneta savienojumu un mēģini vēlreiz.</div>`;
+    status(""); return;
+  }
+  // models in parallel, each separately so one failure doesn't break the rest
+  S.models = {};
+  const res = await Promise.allSettled(MODELS.map(m =>
+    fetch(`${API}?${base}&forecast_days=10&models=${m.id}&hourly=temperature_2m,precipitation,wind_speed_10m,wind_gusts_10m`).then(r=>r.ok?r.json():Promise.reject(r.status))
+  ));
+  res.forEach((r,i)=>{
+    if(r.status!=="fulfilled") return;
+    const h=r.value.hourly, maps={t:new Map(),p:new Map(),w:new Map(),g:new Map()};
+    let any=false;
+    h.time.forEach((t,j)=>{ const v=h.temperature_2m[j]; if(v!=null) any=true;
+      maps.t.set(t,v); maps.p.set(t,h.precipitation[j]); maps.w.set(t,h.wind_speed_10m[j]); maps.g.set(t,h.wind_gusts_10m[j]); });
+    if(any) S.models[MODELS[i].id]=maps;
+  });
+  renderModels();
+}
+
+/* ---------- now ---------- */
+function renderNow(){
+  const c=S.main.current, d=S.main.daily, h=S.main.hourly, i=S.nowIdx;
+  const next = (arr,n)=>arr.slice(i,i+n);
+  const p24 = next(h.precipitation,24).reduce((a,b)=>a+(b||0),0);
+  const s24 = next(h.snowfall,24).reduce((a,b)=>a+(b||0),0);
+  const gMax = Math.max(...next(h.wind_gusts_10m,24).filter(v=>v!=null));
+  const gIdx = i + next(h.wind_gusts_10m,24).indexOf(gMax);
+  // next precipitation start
+  let rainMsg="";
+  if((c.precipitation||0)>0.05) rainMsg="Šobrīd līst/snieg";
+  else { const k=next(h.precipitation,24).findIndex(v=>v>=0.2); rainMsg = k<0 ? "Tuvākajās 24 h nokrišņi nav gaidāmi" : `Nokrišņi sāksies ap ${h.time[i+k].slice(11,16)}${dayOf(h.time[i+k])!==dayOf(h.time[i])?" ("+WD[dayOf(h.time[i+k])]+")":""} (${f0(h.precipitation_probability[i+k])}%)`; }
+  let alerts="";
+  if(gMax>=25) alerts+=`<div class="alert crit">⛔ <div><b>Vētras brāzmas līdz ${f0(gMax)} m/s</b> ap ${fmtTime(h.time[gIdx])}. Izvairies no braukšanas, pārbaudi vedur.is brīdinājumus.</div></div>`;
+  else if(gMax>=18) alerts+=`<div class="alert warn">⚠️ <div><b>Stipras brāzmas līdz ${f0(gMax)} m/s</b> ap ${fmtTime(h.time[gIdx])}. Uzmanīgi atver auto durvis, pārbaudi ceļus.</div></div>`;
+  const minT = Math.min(...next(h.temperature_2m,24)), maxP=Math.max(...next(h.precipitation,24));
+  if(minT<=1 && minT>=-3 && maxP>0) alerts+=`<div class="alert warn">🧊 <div><b>Iespējams apledojums</b> — temperatūra ap 0 °C ar nokrišņiem.</div></div>`;
+  $("#nowCard").innerHTML = `
+    <div class="now">
+      <div class="icon">${wcIcon(c.weather_code,c.is_day)}</div>
+      <div>
+        <div class="temp">${f0(c.temperature_2m)}°</div>
+        <div class="desc">${wcText(c.weather_code)}</div>
+        <div class="place">📍 ${S.loc.name} · jūtas kā ${f0(c.apparent_temperature)}°</div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="tile"><div class="k">Vējš</div><div class="v">${f0(c.wind_speed_10m)} m/s ${arrow(c.wind_direction_10m)}</div><div class="s">${dirTxt(c.wind_direction_10m)} · ${windWord(c.wind_speed_10m)}</div></div>
+      <div class="tile"><div class="k">Brāzmas</div><div class="v">${f0(c.wind_gusts_10m)} m/s</div><div class="s">24 h maks. ${f0(gMax)}</div></div>
+      <div class="tile"><div class="k">Šodien</div><div class="v">${f0(d.temperature_2m_min[0])}° / ${f0(d.temperature_2m_max[0])}°</div><div class="s">min / maks</div></div>
+      <div class="tile"><div class="k">Nokrišņi 24 h</div><div class="v">${f1(p24)} mm</div><div class="s">${s24>0.1?`sniegs ${f1(s24)} cm`:"&nbsp;"}</div></div>
+      <div class="tile"><div class="k">Mitrums</div><div class="v">${f0(c.relative_humidity_2m)}%</div><div class="s">mākoņi ${f0(c.cloud_cover)}%</div></div>
+      <div class="tile"><div class="k">Spiediens</div><div class="v">${f0(c.pressure_msl)}</div><div class="s">hPa</div></div>
+      <div class="tile"><div class="k">Redzamība</div><div class="v">${c.visibility!=null?f1(c.visibility/1000)+" km":"—"}</div><div class="s">&nbsp;</div></div>
+      <div class="tile"><div class="k">Gaišais laiks</div><div class="v">${Math.floor(d.daylight_duration[0]/3600)} h ${Math.round(d.daylight_duration[0]%3600/60)} min</div><div class="s">☀ ${d.sunrise[0].slice(11,16)} – ${d.sunset[0].slice(11,16)}</div></div>
+    </div>
+    <div class="note" style="margin-top:10px">☔ ${rainMsg}</div>
+    ${alerts}`;
+}
+
+/* ---------- chart engine ---------- */
+function niceTicks(min,max,n=4){
+  const span=max-min||1, step0=span/n, mag=Math.pow(10,Math.floor(Math.log10(step0)));
+  const step=[1,2,2.5,5,10].map(s=>s*mag).find(s=>s>=step0);
+  const lo=Math.floor(min/step)*step, hi=Math.ceil(max/step)*step, out=[];
+  for(let v=lo; v<=hi+1e-9; v+=step) out.push(+v.toFixed(6));
+  return out;
+}
+function chart(el, times, series, o={}){
+  const W=Math.max(280, el.clientWidth||340), H=o.h||170, m={l:34,r:10,t:o.title?8:8,b:22};
+  const n=times.length, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const vis=series.filter(s=>!s.hidden);
+  let vals=[]; vis.forEach(s=>s.values.forEach(v=>{ if(v!=null&&isFinite(v)) vals.push(v); }));
+  let mn=vals.length?Math.min(...vals):0, mx=vals.length?Math.max(...vals):1;
+  if(o.zero) mn=Math.min(0,mn);
+  if(o.minSpan && mx-mn<o.minSpan){ const c=(mx+mn)/2; mx=o.zero?Math.max(mx,o.minSpan):c+o.minSpan/2; if(!o.zero) mn=c-o.minSpan/2; }
+  const ticks=niceTicks(mn,mx); mn=ticks[0]; mx=ticks[ticks.length-1];
+  const x=i=>m.l+(n<=1?0:i*iw/(n-1)), y=v=>m.t+ih-(v-mn)/(mx-mn||1)*ih;
+  const bw=Math.max(1.5, iw/n-2);
+  let g="";
+  // grid
+  ticks.forEach(t=>{ g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(t)}" y2="${y(t)}" stroke="${css('--grid')}" stroke-width="1"/>`
+     +`<text x="${m.l-6}" y="${y(t)+4}" text-anchor="end" font-size="10" fill="${css('--muted')}">${String(t).replace(".",",")}</text>`; });
+  if(mn<0&&mx>0&&o.zeroLine) g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(0)}" y2="${y(0)}" stroke="${css('--muted')}" stroke-width="1" stroke-dasharray="3 3"/>`;
+  // x labels
+  const long=n>60;
+  times.forEach((t,i)=>{
+    const H_=+hh(t);
+    if(H_===0){ g+=`<line x1="${x(i)}" x2="${x(i)}" y1="${m.t}" y2="${m.t+ih}" stroke="${css('--line')}" stroke-width="1"/>`;
+      g+=`<text x="${x(i)+3}" y="${H-6}" font-size="10" font-weight="600" fill="${css('--text2')}">${WD[dayOf(t)]} ${+t.slice(8,10)}.</text>`; }
+    else if(!long && (n<=26 ? H_%6===0 : H_%6===0 && H_!==6) && i>1 && i<n-2) g+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle" font-size="10" fill="${css('--muted')}">${hh(t)}</text>`;
+  });
+  // marks
+  vis.forEach(s=>{
+    const col=css(s.color)||s.color;
+    if(s.kind==="bar"){
+      s.values.forEach((v,i)=>{ if(!v||v<=0) return; const h=Math.max(1,y(mn)-y(v)); const r=Math.min(2,bw/2,h/2);
+        g+=`<path d="M${x(i)-bw/2},${y(mn)} v${-(h-r)} q0,${-r} ${r},${-r} h${bw-2*r} q${r},0 ${r},${r} v${h-r} z" fill="${col}" ${s.opacity?`opacity="${s.opacity}"`:""}/>`; });
+    } else {
+      let d="", pen=false;
+      s.values.forEach((v,i)=>{ if(v==null||!isFinite(v)){pen=false;return;} d+=(pen?"L":"M")+x(i).toFixed(1)+","+y(v).toFixed(1); pen=true; });
+      g+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="${s.width||2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash?`stroke-dasharray="${s.dash}"`:""}/>`;
+    }
+  });
+  g+=`<line class="xh" x1="0" x2="0" y1="${m.t}" y2="${m.t+ih}" stroke="${css('--text2')}" stroke-width="1" visibility="hidden"/>`;
+  g+=`<g class="dots"></g>`;
+  el.innerHTML = (o.title?`<div class="lbl">${o.title}</div>`:"")+`<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${o.title||""}">${g}<rect x="${m.l}" y="0" width="${iw}" height="${H}" fill="transparent"/></svg><div class="tip"></div>`;
+  const svg=el.querySelector("svg"), tip=el.querySelector(".tip"), xh=svg.querySelector(".xh"), dots=svg.querySelector(".dots");
+  function show(ev){
+    const r=svg.getBoundingClientRect(), px=(ev.clientX-r.left)*W/r.width;
+    const i=Math.max(0,Math.min(n-1,Math.round((px-m.l)/(iw/(n-1||1)))));
+    xh.setAttribute("x1",x(i)); xh.setAttribute("x2",x(i)); xh.setAttribute("visibility","visible");
+    let dh="", rows="";
+    vis.forEach(s=>{ const v=s.values[i]; const col=css(s.color)||s.color;
+      if(v!=null&&s.kind!=="bar") dh+=`<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="${col}" stroke="${css('--surface')}" stroke-width="2"/>`;
+      rows+=`<div class="r"><span class="sw" style="background:${col}"></span>${s.name}: <b style="display:inline;margin:0">${v==null?"—":f1(v)} ${o.unit||""}</b></div>`; });
+    if(o.extra) rows+=o.extra(i);
+    dots.innerHTML=dh;
+    tip.innerHTML=`<b>${fmtTime(times[i])}</b>${rows}`; tip.style.display="block";
+    const tx=x(i)*r.width/W, tw=tip.offsetWidth;
+    tip.style.left=Math.max(0,Math.min(r.width-tw, tx>r.width/2? tx-tw-12 : tx+12))+"px";
+    tip.style.top=(o.title?22:0)+"px";
+  }
+  svg.addEventListener("pointermove",show); svg.addEventListener("pointerdown",show);
+  svg.addEventListener("pointerleave",()=>{ tip.style.display="none"; xh.setAttribute("visibility","hidden"); dots.innerHTML=""; });
+}
+
+/* ---------- hourly ---------- */
+function renderHourly(){
+  const h=S.main.hourly, a=S.nowIdx, b=Math.min(h.time.length,a+S.range+1);
+  const sl=k=>h[k].slice(a,b), times=h.time.slice(a,b);
+  chart($("#cTemp"), times, [
+    {name:"Temperatūra", color:"--s2", values:sl("temperature_2m")},
+    {name:"Jūtas kā", color:"--s1", values:sl("apparent_temperature"), dash:"4 3"},
+  ], {unit:"°C", title:"Temperatūra (°C) — <span style='color:var(--s2)'>━</span> faktiskā, <span style='color:var(--s1)'>┅</span> jūtas kā", zeroLine:true, minSpan:4,
+      extra:i=>`<div class="r">${wcIcon(h.weather_code[a+i],h.is_day[a+i])} ${wcText(h.weather_code[a+i])}</div>`});
+  chart($("#cPrec"), times, [
+    {name:"Nokrišņi", color:"--s1", values:sl("precipitation"), kind:"bar"},
+  ], {unit:"mm", title:"Nokrišņi (mm/h)", zero:true, minSpan:1, h:120,
+      extra:i=>`<div class="r">Varbūtība: ${f0(h.precipitation_probability[a+i])}%</div>${h.snowfall[a+i]>0?`<div class="r">Sniegs: ${f1(h.snowfall[a+i])} cm</div>`:""}`});
+  chart($("#cWind"), times, [
+    {name:"Vējš", color:"--s1", values:sl("wind_speed_10m")},
+    {name:"Brāzmas", color:"--s2", values:sl("wind_gusts_10m")},
+  ], {unit:"m/s", title:"Vējš (m/s) — <span style='color:var(--s1)'>━</span> vidējais, <span style='color:var(--s2)'>━</span> brāzmas", zero:true, minSpan:10, h:150,
+      extra:i=>`<div class="r">Virziens: ${dirTxt(h.wind_direction_10m[a+i])} ${arrow(h.wind_direction_10m[a+i])}</div>`});
+}
+
+/* ---------- models ---------- */
+function median(a){ const s=a.slice().sort((x,y)=>x-y), k=s.length>>1; return s.length%2?s[k]:(s[k-1]+s[k])/2; }
+function renderModels(){
+  const h=S.main.hourly, a=S.nowIdx, b=Math.min(h.time.length,a+Math.min(S.range,216)+1), times=h.time.slice(a,b);
+  const avail=MODELS.filter(m=>S.models[m.id]);
+  const missing=MODELS.filter(m=>!S.models[m.id]).map(m=>m.name);
+  const units={t:"°C",p:"mm",w:"m/s",g:"m/s"};
+  const series=avail.map(m=>({name:m.name, color:m.c, hidden:S.hidden.has(m.id), values:times.map(t=>{ const v=S.models[m.id][S.metric].get(t); return v==null?null:v; })}));
+  const cons=times.map((t,i)=>{ const v=series.filter(s=>!s.hidden).map(s=>s.values[i]).filter(v=>v!=null); return v.length?median(v):null; });
+  series.push({name:"Vidējā (mediāna)", color:css("--text"), values:cons, width:3});
+  chart($("#cModels"), times, series, {unit:units[S.metric], zero:S.metric!=="t", zeroLine:S.metric==="t", minSpan:S.metric==="t"?4:S.metric==="p"?1:8, h:200});
+  $("#modelLegend").innerHTML = avail.map(m=>`<button data-id="${m.id}" class="${S.hidden.has(m.id)?"off":""}"><span class="sw" style="background:var(${m.c})"></span>${m.name}</button>`).join("")
+    + `<button disabled><span class="sw" style="background:var(--text);height:4px"></span>Mediāna</button>`;
+  $("#modelLegend").querySelectorAll("[data-id]").forEach(btn=>btn.onclick=()=>{ const id=btn.dataset.id; S.hidden.has(id)?S.hidden.delete(id):S.hidden.add(id); store.set("hiddenModels",[...S.hidden]); renderModels(); });
+  $("#modelNote").innerHTML = `Pieskaries grafikam, lai redzētu katra modeļa vērtību. Jo tuvāk līnijas viena otrai, jo drošāka prognoze.${missing.length?` Nav datu šai vietai: ${missing.join(", ")}.`:""}`;
+  // confidence for next 24h temperature & 48h
+  const spread=(metric,hours)=>{ const ts=h.time.slice(a,a+hours); const sp=ts.map(t=>{ const v=avail.map(m=>S.models[m.id][metric].get(t)).filter(v=>v!=null); return v.length>1?Math.max(...v)-Math.min(...v):null; }).filter(v=>v!=null); return sp.length?sp.reduce((x,y)=>x+y,0)/sp.length:null; };
+  const st=spread("t",24), sg=spread("g",24), st3=spread("t",72);
+  const lvl=v=> v==null?["—","var(--bg)"] : v<1.5?["augsta","color-mix(in srgb, var(--s3) 25%, transparent)"] : v<3?["vidēja","color-mix(in srgb, var(--s4) 30%, transparent)"] : ["zema","color-mix(in srgb, var(--s2) 30%, transparent)"];
+  const L=lvl(st);
+  $("#confBox").innerHTML = avail.length<2 ? `<span class="note">Salīdzināšanai nepietiek modeļu datu.</span>` :
+    `<span class="pill" style="background:${L[1]}">Uzticamība: ${L[0]}</span><span class="note">${avail.length} modeļi · nākamajās 24 h vidējā temperatūras atšķirība ${f1(st)}°, brāzmām ${f1(sg)} m/s · 3 dienām ${f1(st3)}°</span>`;
+}
+
+/* ---------- days ---------- */
+function renderDays(){
+  const d=S.main.daily, lo=Math.min(...d.temperature_2m_min), hi=Math.max(...d.temperature_2m_max), span=hi-lo||1;
+  $("#days").innerHTML = d.time.map((t,i)=>{
+    const l=(d.temperature_2m_min[i]-lo)/span*100, w=(d.temperature_2m_max[i]-d.temperature_2m_min[i])/span*100;
+    const snow=d.snowfall_sum[i]>0.2;
+    return `<div class="d">
+      <div class="dn">${i===0?"Šodien":i===1?"Rīt":WDL[dayOf(t)].slice(0,3)}<small>${+t.slice(8,10)}. ${MON[+t.slice(5,7)-1]}</small></div>
+      <div class="ic" title="${wcText(d.weather_code[i])}">${wcIcon(d.weather_code[i])}</div>
+      <div class="mn">${f0(d.temperature_2m_min[i])}°</div>
+      <div class="bar"><i style="left:${l}%;width:${Math.max(w,3)}%"></i></div>
+      <div><b>${f0(d.temperature_2m_max[i])}°</b></div>
+      <div class="pr">${snow?`❄ ${f1(d.snowfall_sum[i])} cm`:`💧 ${f1(d.precipitation_sum[i])} mm`}<br>💨 ${f0(d.wind_gusts_10m_max[i])} m/s</div>
+    </div>`;}).join("") + `<p class="note" style="margin-top:8px">💨 = maksimālās brāzmas. Prognoze pēc 7. dienas ir orientējoša.</p>`;
+}
+
+/* ---------- controls ---------- */
+$("#rangeSeg").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; S.range=+b.dataset.r; $("#rangeSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); store.set("range",S.range); if(S.main){renderHourly(); renderModels();} };
+$("#metricSeg").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; S.metric=b.dataset.m; $("#metricSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); if(S.main) renderModels(); };
+let rz; addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(S.main){renderHourly(); renderModels();} },200); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{ if(S.main){renderHourly(); renderModels();} });
+setInterval(()=>{ if(document.visibilityState==="visible") load(); }, 15*60*1000);
+
+/* ---------- start ---------- */
+const savedR=store.get("range"); if(savedR){ S.range=savedR; $("#rangeSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",+x.dataset.r===savedR)); }
+const saved=store.get("loc");
+if(saved){ S.loc=saved; load(); } else { geolocate(); }
+</script>
+</body>
+</html>
