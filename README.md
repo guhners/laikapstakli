@@ -1,0 +1,2 @@
+# laikapstakli
+Meteo mana lokacija 
